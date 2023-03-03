@@ -28,20 +28,20 @@ struct Cli {
     debug: u8,
 
     #[command(subcommand)]
-    command: Option<Commands>
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
 enum Commands {
     /// Create an empty Git repository or reinitialize an existing one
-    Init { directory: Option<String> }, 
+    Init { directory: Option<String> },
     /// Provide content or type and size information for repository objects
     #[command(name = "cat-file")]
-    CatFile { 
+    CatFile {
         /// Pretty-print the contents of <object> based on its type.
         ///  
         /// ## <type>
-        /// 
+        ///
         /// Typically this matches the real type of <object> but asking for a type that can be trivially
         /// dereferenced from the given <object> is also permitted. An example is to ask for a "tree"
         /// with <object> being a commit object that contains it, or to ask for a "blob" with <object>
@@ -81,17 +81,16 @@ fn main() {
     }
 
     match &cli.command {
-        Some(Commands::Init{ directory }) => {
-            run_init(directory).unwrap() 
-        }
-        Some(Commands::CatFile{ object, object_type }) => {
-            run_cat_file(object, object_type).unwrap()
-        }
+        Some(Commands::Init { directory }) => run_init(directory).unwrap(),
+        Some(Commands::CatFile {
+            object,
+            object_type,
+        }) => run_cat_file(object, object_type).unwrap(),
         None => {}
     }
 }
 
-fn run_init(directory: &Option<String>) -> Result<(),io::Error> {
+fn run_init(directory: &Option<String>) -> Result<(), io::Error> {
     if let Some(d) = directory {
         env::set_current_dir(d).unwrap()
     }
@@ -104,10 +103,9 @@ fn run_init(directory: &Option<String>) -> Result<(),io::Error> {
     }
 
     Ok(())
-} 
+}
 
-fn run_cat_file(object: &String, _object_type: &PrettyPrint) -> Result<(),io::Error> {
-
+fn run_cat_file(object: &String, _object_type: &PrettyPrint) -> Result<(), io::Error> {
     let prefix = object.get(0..2).unwrap();
     let rest = object.get(2..).unwrap();
     let file_path = format!(".git/objects/{}/{}", prefix, rest);
@@ -119,9 +117,37 @@ fn run_cat_file(object: &String, _object_type: &PrettyPrint) -> Result<(),io::Er
         let mut s = String::new();
         decoder.read_to_string(&mut s)?;
 
-        println!("{}", s);
+        let obj = GitObject::parse(s).unwrap();
+
+        match obj {
+            GitObject::Blob {
+                contents,
+                byte_size: _,
+            } => println!("{}", contents),
+        };
     }
     Ok(())
+}
+
+#[derive(Debug)]
+enum GitObject {
+    Blob { byte_size: String, contents: String },
+}
+
+impl GitObject {
+    fn parse(input: String) -> Result<GitObject, String> {
+        let split = input.split_once("\0");
+        match split {
+            Some((header, contents)) => match header.split_once(" ") {
+                Some(("blob", byte_size)) => Ok(GitObject::Blob {
+                    contents: contents.to_string(),
+                    byte_size: byte_size.to_string(),
+                }),
+                _ => Err("failed to parse object: unknown type".to_string())
+            },
+            _ => Err("failed to parse object: unknown type".to_string()),
+        }
+    }
 }
 
 #[test]
