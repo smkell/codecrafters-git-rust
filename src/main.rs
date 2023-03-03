@@ -6,7 +6,7 @@ use std::fs;
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args[1] == "init" {
-        if args.len() >= 2 {
+        if args.len() >= 3 {
             let p = std::path::Path::new(&args[2]);
             env::set_current_dir(p).unwrap();
         }
