@@ -8,6 +8,7 @@ use std::io::BufReader;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
+use clap::ValueEnum;
 use clap::{Parser, Subcommand};
 use flate2::read::ZlibDecoder;
 
@@ -46,12 +47,29 @@ enum Commands {
         /// with <object> being a commit object that contains it, or to ask for a "blob" with <object>
         /// being a tag object that points at it.
 
-        #[arg(short = 'p', value_name = "TYPE")]
-        object_type: Option<Option<String>>,
+        #[arg(
+            short = 'p', 
+            value_name = "TYPE", 
+            require_equals = true,
+            num_args = 0..=1, 
+            default_value_t = PrettyPrint::Auto,
+            default_missing_value = "none",
+            value_enum, 
+        )]
+        object_type: PrettyPrint,
 
         /// The name of the object to show.
         object: String,
     },
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum PrettyPrint {
+    None,
+    Auto,
+    Blob,
+    Tree,
+    Commit,
 }
 
 fn main() {
@@ -88,7 +106,7 @@ fn run_init(directory: &Option<String>) -> Result<(),io::Error> {
     Ok(())
 } 
 
-fn run_cat_file(object: &String, object_type: &Option<Option<String>>) -> Result<(),io::Error> {
+fn run_cat_file(object: &String, _object_type: &PrettyPrint) -> Result<(),io::Error> {
 
     let prefix = object.get(0..2).unwrap();
     let rest = object.get(2..).unwrap();
