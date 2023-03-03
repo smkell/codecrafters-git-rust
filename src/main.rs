@@ -123,7 +123,7 @@ fn run_cat_file(object: &String, _object_type: &PrettyPrint) -> Result<(), io::E
             GitObject::Blob {
                 contents,
                 byte_size: _,
-            } => println!("{}", contents),
+            } => println!("{}", contents.trim_end()),
         };
     }
     Ok(())
